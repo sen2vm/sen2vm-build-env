@@ -62,7 +62,7 @@ RUN ldconfig /etc/ld.so.conf.d
 RUN mkdir -p /opt/rugged \
  && cd /opt/rugged \
  && curl -Lo rugged-4.0.1.jar \
-      https://gitlab.eopf.copernicus.eu/geolib/sxgeo/-/raw/main/jar/rugged-4.0.1.jar \
+      https://gitlab.eopf.copernicus.eu/geolib/sxgeo/-/raw/0.2.1/jar/rugged-4.0.1.jar \
  && mvn install:install-file \
       -Dfile=rugged-4.0.1.jar \
       -DgroupId=org.orekit \
