@@ -75,6 +75,4 @@ jobs:
         if: steps.login-pat.outcome != 'success' && steps.login-github-token.outcome != 'success'
         run: |
           echo "Both GHCR authentication methods failed."
-          exit 1ral
-        # certificate against the sigstore community Fulcio instance.
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
+          exit 1
