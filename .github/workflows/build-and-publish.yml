@@ -18,99 +18,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-name: Build CI Image
+name: Test GHCR Login
 
 on:
-  push:
-    branches: [ "main" ]
-    tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - '[0-9]+.[0-9]+.[0-9]+-rc[0-9]+'
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-
-  build_and_push:
-
+  test-ghcr-login:
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge with sigstore/fulcio
-      # when running outside of PRs.
-      id-token: write
 
     steps:
-      # Check out the repository under $GITHUB_WORKSPACE
-      # https://github.com/actions/checkout
-      - name: Check out the repository
-        uses: actions/checkout@v7.0.1
-
-      # Install the cosign tool except on PR
-      # https://github.com/sigstore/cosign-installer
-      - name: Install cosign
-        if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v4.1.3
-      - name: Check install!
-        if: github.event_name != 'pull_request'
-        run: cosign version
- 
-      # Set up BuildKit Docker container builder to be able to build
-      # multi-platform images and export cache
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.1.0
-
-      # Login against a Docker registry except on PR
-      # https://github.com/docker/login-action
-      - name: Log into registry ${{ env.REGISTRY }}
-        if: github.event_name != 'pull_request'
+      # Test avec le PAT stocké dans GH_CONTAINER_REGISTRY_TOKEN
+      - name: Login to GHCR with GH_CONTAINER_REGISTRY_TOKEN
+        id: login-pat
+        continue-on-error: true
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GH_CONTAINER_REGISTRY_TOKEN }}
 
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@v6.1.0
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      # Logout pour que le deuxième test soit indépendant
+      - name: Logout from GHCR
+        if: steps.login-pat.outcome == 'success'
+        run: docker logout ${{ env.REGISTRY }}
 
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@v7.2.0
+      # Test avec le GITHUB_TOKEN généré par GitHub Actions
+      - name: Login to GHCR with GITHUB_TOKEN
+        id: login-github-token
+        continue-on-error: true
+        uses: docker/login-action@v4
         with:
-          context: .
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Sign the resulting Docker image digest except on PRs.
-      # This will only write to the public Rekor transparency log when the
-      # Docker repository is public to avoid leaking data. If you would like
-      # to publish transparency data even for private images, pass --force to
-      # cosign below.
-      # https://github.com/sigstore/cosign
-      - name: Sign the published Docker image
-        if: ${{ github.event_name != 'pull_request' }}
-        env:
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-        # This step uses the identity token to provision an ephemeral
+      # Affiche clairement le résultat des deux tests
+      - name: Display results
+        run: |
+          echo "======================================"
+          echo "GHCR authentication test results"
+          echo "======================================"
+          echo "GH_CONTAINER_REGISTRY_TOKEN : ${{ steps.login-pat.outcome }}"
+          echo "GITHUB_TOKEN                : ${{ steps.login-github-token.outcome }}"
+          echo "======================================"
+
+      # Fait échouer le workflow uniquement si les deux méthodes échouent
+      - name: Check results
+        if: steps.login-pat.outcome != 'success' && steps.login-github-token.outcome != 'success'
+        run: |
+          echo "Both GHCR authentication methods failed."
+          exit 1ral
         # certificate against the sigstore community Fulcio instance.
         run: echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
