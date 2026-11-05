@@ -5,7 +5,6 @@ Build docker image for Sen2VM-core, with:
 * GDAL 3.6.2 with java bindings
 * Java 8 JDK
 * Maven
-* Forked Rugged 4.0.1 needed by SXGEO
 
 ## Get Docker image
 
