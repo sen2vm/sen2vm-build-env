@@ -58,22 +58,6 @@ RUN ln -sf /usr/local/share/java/libgdalalljni.so /usr/local/lib
 # Update ld.so configuration
 RUN ldconfig /etc/ld.so.conf.d
 
-# Install RUGGED as it is a fork for now
-RUN mkdir -p /opt/rugged \
- && cd /opt/rugged \
- && curl -Lo rugged-4.0.1.jar \
-      https://gitlab.eopf.copernicus.eu/geolib/sxgeo/-/raw/0.2.1/jar/rugged-4.0.1.jar \
- && mvn install:install-file \
-      -Dfile=rugged-4.0.1.jar \
-      -DgroupId=org.orekit \
-      -DartifactId=rugged \
-      -Dversion=4.0.1 \
-      -Dpackaging=jar \
-      -DgeneratePom=true \
- && cd / \
- && rm -rf /opt/rugged
-
-
 WORKDIR /Sen2vm
 
 CMD ["sh"]
