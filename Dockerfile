@@ -2,6 +2,7 @@ FROM alpine:3.22 AS builder
 
 RUN apk add --no-cache \
     openjdk8 \
+    openjdk21 \
     cmake \
     make \
     g++ \
@@ -57,6 +58,10 @@ RUN ln -sf /usr/local/share/java/libgdalalljni.so /usr/local/lib
 
 # Update ld.so configuration
 RUN ldconfig /etc/ld.so.conf.d
+
+RUN java -version \
+ && /usr/lib/jvm/java-21-openjdk/bin/java -version \
+ && mvn -version
 
 WORKDIR /Sen2vm
 
