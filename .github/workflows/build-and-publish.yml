@@ -21,7 +21,8 @@
 name: Test GHCR Login
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches: [ "main" ]
 
 env:
   REGISTRY: ghcr.io
@@ -35,8 +36,7 @@ jobs:
       packages: write
 
     steps:
-      # Test avec le PAT stocké dans GH_CONTAINER_REGISTRY_TOKEN
-      - name: Login to GHCR with GH_CONTAINER_REGISTRY_TOKEN
+      - name: Login with GH_CONTAINER_REGISTRY_TOKEN
         id: login-pat
         continue-on-error: true
         uses: docker/login-action@v4
@@ -45,14 +45,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_CONTAINER_REGISTRY_TOKEN }}
 
-      # Logout pour que le deuxième test soit indépendant
-      - name: Logout from GHCR
+      - name: Logout after PAT test
         if: steps.login-pat.outcome == 'success'
         run: docker logout ${{ env.REGISTRY }}
 
-      # Test avec le GITHUB_TOKEN généré par GitHub Actions
-      - name: Login to GHCR with GITHUB_TOKEN
-        id: login-github-token
+      - name: Login with GITHUB_TOKEN
+        id: login-github
         continue-on-error: true
         uses: docker/login-action@v4
         with:
@@ -60,19 +58,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Affiche clairement le résultat des deux tests
       - name: Display results
         run: |
           echo "======================================"
           echo "GHCR authentication test results"
           echo "======================================"
           echo "GH_CONTAINER_REGISTRY_TOKEN : ${{ steps.login-pat.outcome }}"
-          echo "GITHUB_TOKEN                : ${{ steps.login-github-token.outcome }}"
+          echo "GITHUB_TOKEN                : ${{ steps.login-github.outcome }}"
           echo "======================================"
 
-      # Fait échouer le workflow uniquement si les deux méthodes échouent
-      - name: Check results
-        if: steps.login-pat.outcome != 'success' && steps.login-github-token.outcome != 'success'
+      - name: Fail if both authentication methods failed
+        if: steps.login-pat.outcome != 'success' && steps.login-github.outcome != 'success'
         run: |
           echo "Both GHCR authentication methods failed."
           exit 1
