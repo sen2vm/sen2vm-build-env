@@ -4,6 +4,7 @@ Build docker image for Sen2VM-core, with:
 
 * GDAL 3.6.2 with java bindings
 * Java 8 JDK
+* Java 21 JDK for SonarCloud
 * Maven
 
 ## Get Docker image
